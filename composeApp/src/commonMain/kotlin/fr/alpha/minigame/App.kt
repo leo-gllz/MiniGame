@@ -12,83 +12,56 @@ import fr.alpha.minigame.engine.Room
 @Composable
 fun App() {
     MaterialTheme {
-        // Scaffold crée la structure de base (barre de titre + contenu)
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("MiniGame - Pendu") },
-                    elevation = 4.dp
-                )
-            }
+            topBar = { TopAppBar(title = { Text("MiniGame") }) }
         ) { innerPadding ->
-            // On initialise le moteur de jeu
             val roomManager = remember { RoomManager() }
-
-            // État pour savoir si on affiche le menu ou la salle
             var currentRoom by remember { mutableStateOf<Room?>(null) }
 
-            // Conteneur principal qui utilise le padding du Scaffold
+            // --- NOUVEAU : État pour le pseudo ---
+            var playerName by remember { mutableStateOf("") }
+
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 if (currentRoom == null) {
-                    // --- ÉCRAN : MENU PRINCIPAL ---
-                    Text(
-                        text = "Bienvenue dans le Lobby",
-                        style = MaterialTheme.typography.h4
+                    // --- ÉCRAN D'ACCUEIL ---
+                    Text("Configuration du joueur", style = MaterialTheme.typography.h5)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Champ de saisie pour le nom
+                    OutlinedTextField(
+                        value = playerName,
+                        onValueChange = { playerName = it },
+                        label = { Text("Ton Pseudo") },
+                        singleLine = true,
+                        modifier = Modifier.width(280.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
                         onClick = {
-                            // Appel de ton moteur pour créer une salle
-                            currentRoom = roomManager.createRoom()
+                            // 1. On crée le joueur (Assure-toi que Player est importé)
+                            val host = Player(id = "p1", name = playerName)
+                            // 2. On crée la salle avec ce joueur
+                            currentRoom = roomManager.createRoom(host)
                         },
-                        modifier = Modifier.width(250.dp).height(50.dp)
+                        // Le bouton est désactivé si le nom est trop court
+                        enabled = playerName.isNotBlank() && playerName.length > 2,
+                        modifier = Modifier.width(280.dp).height(50.dp)
                     ) {
-                        Text("CRÉER UNE NOUVELLE SALLE")
+                        Text("CRÉER ET REJOINDRE")
                     }
 
                 } else {
-                    // --- ÉCRAN : DANS LA SALLE ---
-                    Card(
-                        elevation = 8.dp,
-                        modifier = Modifier.padding(16.dp).widthIn(max = 400.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("Code de la salle :", style = MaterialTheme.typography.overline)
-
-                            // Affiche l'ID généré par ton RoomManager
-                            Text(
-                                text = currentRoom?.id ?: "Erreur",
-                                style = MaterialTheme.typography.h2,
-                                color = MaterialTheme.colors.primary
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                            Text(
-                                "Attente d'un adversaire...",
-                                modifier = Modifier.padding(top = 8.dp),
-                                style = MaterialTheme.typography.caption
-                            )
-
-                            Spacer(modifier = Modifier.height(40.dp))
-
-                            TextButton(onClick = { currentRoom = null }) {
-                                Text("RETOUR AU MENU", color = MaterialTheme.colors.error)
-                            }
-                        }
-                    }
+                    // --- ÉCRAN LOBBY ---
+                    Text("Salle : ${currentRoom?.id}")
+                    Text("Joueur : ${playerName} (Host)")
+                    // ... reste du code de la salle
                 }
             }
         }
