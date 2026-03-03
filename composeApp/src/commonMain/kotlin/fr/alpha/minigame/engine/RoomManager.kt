@@ -1,6 +1,6 @@
 package fr.alpha.minigame.engine
 
-class RoomManager {
+object RoomManager {
     private val activeRooms = mutableMapOf<String, Room>()
 
     fun createRoom(): Room {
@@ -10,7 +10,6 @@ class RoomManager {
 
         val newRoom = Room(newId)
         activeRooms[newId] = newRoom
-        println("Salle créée avec l'ID : $newId")
         return newRoom
     }
 
@@ -20,6 +19,5 @@ class RoomManager {
 
     fun closeRoom(id : String) {
         activeRooms.remove(id)
-        println("Salle $id fermée.")
     }
 }

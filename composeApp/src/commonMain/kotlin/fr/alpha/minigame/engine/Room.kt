@@ -34,6 +34,8 @@ class Room (val id: String){
 
     fun getCurrentPlayer(): Player? = joinedPlayers.getOrNull(currentPlayerIndex)
 
+    fun getPlayers(): List<Player> = joinedPlayers.toList()
+
     fun join(player: Player) {
         if (!isStarted) {
             joinedPlayers.add(player)
