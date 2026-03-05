@@ -14,7 +14,7 @@ import io.ktor.http.*
 
 fun main() {
     // On lance le serveur sur le port 8080 de ton PC
-    embeddedServer(CIO, port = 8081) {
+    embeddedServer(CIO, port = 8081, host = "0.0.0.0") {
         install(CORS) {
             anyHost()
             allowMethod(HttpMethod.Get)

@@ -42,7 +42,7 @@ fun App() {
                     // On change le message pendant le chargement
                     statusMessage = "Vérification en cours..."
 
-                    val response = client.get("http://localhost:8081/check-pseudo/$monPseudo")
+                    val response = client.get("http://192.168.31.121:8081/check-pseudo/$monPseudo")
                     val brute = response.bodyAsText()
 
                     val parts = brute.split("|")
