@@ -1,4 +1,4 @@
-package fr.alpha.minigame.engine
+package server.engine
 
 object RoomManager {
     private val activeRooms = mutableMapOf<String, Room>()

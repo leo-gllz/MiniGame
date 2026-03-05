@@ -1,6 +1,6 @@
-package fr.alpha.minigame.games
+package server.games
 
-import fr.alpha.minigame.models.Player
+import server.models.Player
 import kotlin.text.iterator
 
 class Hangman : MiniGame {

@@ -2,19 +2,86 @@ package fr.alpha.minigame
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.* // On utilise bien le "3" ici
-import androidx.compose.material3.SearchBarDefaults.InputField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fr.alpha.minigame.engine.RoomManager
-import fr.alpha.minigame.engine.RoomManager.createRoom
 import fr.alpha.minigame.models.Player
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun App() {
+    var monPseudo by remember { mutableStateOf("") }
+    // On garde uniquement ce qu'on affiche vraiment
+    var statusMessage by remember { mutableStateOf("En attente d'un pseudo...") }
+    var debugInfos by remember { mutableStateOf("") }
+
+    val scope = rememberCoroutineScope()
+    val client = remember { HttpClient() }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        OutlinedTextField(
+            value = monPseudo,
+            onValueChange = { monPseudo = it },
+            label = { Text("Entre ton pseudo") },
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = {
+            scope.launch {
+                try {
+                    // On change le message pendant le chargement
+                    statusMessage = "Vérification en cours..."
+
+                    val response = client.get("http://localhost:8081/check-pseudo/$monPseudo")
+                    val brute = response.bodyAsText()
+
+                    val parts = brute.split("|")
+                    if (parts.size >= 5) {
+                        val isValid = parts[0].toBoolean()
+                        val msg = parts[2]
+                        val heure = parts[3]
+                        val duration = parts[4]
+
+                        statusMessage = if(isValid) "✓ $msg" else "❌ $msg"
+                        debugInfos = "Reçu à $heure (en $duration)"
+                    }
+                } catch (e: Exception) {
+                    statusMessage = "❌ Serveur hors ligne ou erreur CORS"
+                    debugInfos = e.message ?: ""
+                }
+            }
+        }) {
+            Text("Vérifier sur le serveur")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // C'EST ICI QU'ON CHANGE ! On affiche les bonnes variables
+        Text(statusMessage, style = MaterialTheme.typography.headlineSmall)
+
+        if (debugInfos.isNotEmpty()) {
+            Text(
+                debugInfos,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
+    }
+}
+
+
+
+    /*
     var currentScreen by remember {mutableStateOf("LOGIN")}
     var playerName by remember { mutableStateOf("") }
     var roomCode by remember { mutableStateOf("") }
@@ -154,4 +221,4 @@ fun RoomScreen(
 @Composable
 fun GameScreen(){
     TODO()
-}
+}*/
