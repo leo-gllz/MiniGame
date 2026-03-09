@@ -1,11 +1,19 @@
 plugins {
     // Utilise l'ID complet du plugin sans la version
     id("org.jetbrains.kotlin.jvm")
+    id("io.ktor.plugin") version "3.0.0"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
     application
 }
 
 repositories {
     mavenCentral()
+}
+
+ktor {
+    fatJar{
+        archiveFileName.set("server.jar")
+    }
 }
 
 dependencies {

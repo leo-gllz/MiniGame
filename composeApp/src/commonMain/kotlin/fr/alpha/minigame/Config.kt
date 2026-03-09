@@ -17,7 +17,12 @@ object GameConfig {
     // const val SERVER_URL = "http://$IP:8081"
 
     // 4g
-    const val IP = "10.111.175.51"
+    //const val IP = "10.111.175.51"
 
-    const val SERVER_URL = "http://$IP:8081"
+    //const val SERVER_URL = "http://$IP:8081"
+
+    // duckdns
+    const val IP = "alphaminigame.duckdns.org"
+
+    const val SERVER_URL = "http://$IP"
 }
