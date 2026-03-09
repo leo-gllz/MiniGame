@@ -24,5 +24,5 @@ object GameConfig {
     // duckdns
     const val IP = "alphaminigame.duckdns.org"
 
-    const val SERVER_URL = "http://$IP"
+    const val SERVER_URL = "https://$IP"
 }
