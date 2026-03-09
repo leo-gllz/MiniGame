@@ -44,6 +44,9 @@ fun main() {
     // On lance le serveur sur le port 8081 de ton PC
     embeddedServer(CIO, port = 8081, host = "0.0.0.0") {
         install(CORS) {
+            allowHost("leo-gllz.github.io", schemes = listOf("https"))
+            allowHeader(HttpHeaders.ContentType)
+            allowMethod(HttpMethod.Options)
             anyHost()
             allowMethod(HttpMethod.Get)
             allowMethod(HttpMethod.Post) // Utile pour plus tard

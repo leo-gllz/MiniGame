@@ -192,8 +192,10 @@ fun TestMessages(username: String = "") {
     val scope = rememberCoroutineScope()
 
 LaunchedEffect(Unit) {
-    client.webSocket(method = HttpMethod.Get, host = "${GameConfig.IP}", port = 8081, path = "/msg") {
+    client.webSocket("wss://${GameConfig.IP}msg") {
         session = this
+        messagesDisplay = "Connecté au serveur !"
+
         try {
             for (frame in incoming) {
                 try { // <--- DEUXIÈME TRY ICI
@@ -203,7 +205,6 @@ LaunchedEffect(Unit) {
                     }
                 } catch (e: Exception) {
                     println("Erreur sur UN message, mais on continue d'écouter")
-                    messagesDisplay = "frame is Frame.txt qui a foiré"
                 }
             }
         } catch (e: Exception) {
