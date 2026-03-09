@@ -1,3 +1,7 @@
+import Users.createdAt
+import Users.password
+import Users.username
+import fr.alpha.minigame.AuthRequests
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.server.engine.*
@@ -11,9 +15,33 @@ import io.ktor.server.routing.routing
 import io.ktor.server.application.*
 import io.ktor.server.plugins.cors.routing.* // <-- Doit être celui-là précisément
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import fr.alpha.minigame.AuthResponse
+import fr.alpha.minigame.MessageToServer
+import fr.alpha.minigame.MessageToUsers
+import io.ktor.http.cio.parseResponse
+import io.ktor.server.http.content.resources
+import io.ktor.server.request.receive
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.*
+import io.ktor.server.websocket.*
+import io.ktor.websocket.*
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import java.util.Collections
+import java.util.LinkedHashSet
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+
+var allMessages: String = ""
 
 fun main() {
-    // On lance le serveur sur le port 8080 de ton PC
+    initDatabase()
+
+    // On lance le serveur sur le port 8081 de ton PC
     embeddedServer(CIO, port = 8081, host = "0.0.0.0") {
         install(CORS) {
             anyHost()
@@ -22,41 +50,113 @@ fun main() {
             allowHeader(HttpHeaders.ContentType)
             allowHeader(HttpHeaders.Authorization)
         }
+
+        install(ContentNegotiation) {
+            json()
+        }
+
+        install(WebSockets) {
+            pingPeriod = 15.seconds
+            timeout = 15.seconds
+            maxFrameSize = Long.MAX_VALUE
+            masking = false
+
+        }
+
         routing {
-            // Route de test simple
-            // Dans Main.kt (Serveur)
+            post("/auth") {
+                val req = call.receive<AuthRequests>()
 
-// Simulation d'une base de données de pseudos déjà pris
-            var pseudosExistants = mutableListOf("Admin", "Lg", "Zelda")
+                println("${req.username},${req.password},${req.isCreation}")
 
-// ... dans ton routing ...
-            get("/check-pseudo/{pseudo}") {
-                val startTime = System.currentTimeMillis()
-                val name = call.parameters["pseudo"] ?: ""
+                val response = transaction {
+                    val user = Users.selectAll()
+                        .where { Users.username eq req.username}.singleOrNull()
 
-                // Logique de vérification
-                val isAlreadyTaken = pseudosExistants.contains(name)
-                val isValid = name.length in 3..15 && !isAlreadyTaken
+                    val isAlreadyTaken = user != null
 
-                val message = when {
-                    isAlreadyTaken -> "Ce pseudo est déjà utilisé."
-                    name.length < 3 -> "Trop court (min 3)."
-                    name.length > 15 -> "Trop long (max 15)."
-                    else -> "Pseudo disponible !"
+                    val isValid = req.username.length in 3..15 && !isAlreadyTaken
+
+                    println("$isValid,${req.username.length}")
+
+                    val errorMessage = when {
+                        isAlreadyTaken -> "Ce pseudo est déjà utilisé."
+                        req.username.length < 3 -> "Pseudo trop court (min 3)."
+                        req.username.length > 15 -> "Pseudo trop long (max 15)."
+                        else -> "else du error message donc autre erreure"
+                    }
+
+                    if (req.isCreation) {
+                        if (!isValid) {
+                            AuthResponse(false, req.username, errorMessage)
+                        }else {
+                            Users.insert {
+                                it[username] = req.username
+                                it[password] = req.password
+                                it[createdAt] = System.currentTimeMillis()
+                            }
+                            println("Pseudo inséré en base: $req.username")
+                            println(Users.selectAll().toList())
+
+                            AuthResponse(true,req.username,"Compte créé !")
+                        }
+                    } else{
+                        if (user != null && user[Users.password] == req.password) {
+                            AuthResponse(true, req.username, "Ravi de vous revoir !")
+                        }else {
+                            AuthResponse(false, req.username, "Identifiants incorrects")
+                        }
+                    }
+
                 }
 
-                val endTime = System.currentTimeMillis()
-                val executionTime = endTime - startTime
-
-                // Pour l'instant on renvoie un texte formaté simple (ou du JSON si tu es prêt)
-                // Format : VALIDATION | PSEUDO | HEURE | TEMPS_EXEC
-                val heure = java.time.LocalTime.now().toString().substring(0, 8)
-                if (isValid) {
-                    pseudosExistants.add(name)
-                    println("Pseudo ajouter : $name, liste des pseudos : $pseudosExistants ")
-                }
-                call.respondText("$isValid|$name|$message|$heure|${executionTime}ms")
+                call.respond(response)
             }
         }
+
+        routing {
+            val connections = Collections.synchronizedSet<DefaultWebSocketServerSession>(LinkedHashSet())
+
+            webSocket("/msg") {
+                println("connection etablie")
+                connections += this
+
+                try {
+                    for (frame in incoming) {
+                        if (frame is Frame.Text) {
+                            val jsonText = frame.readText()
+
+                            val inputMessage = Json.decodeFromString<MessageToServer>(jsonText)
+                            println("Message de ${inputMessage.username}: ${inputMessage.text}")
+
+                            val response = transaction {
+                                allMessages += "${inputMessage.username} - ${inputMessage.text}\n"
+                                MessageToUsers(outputMessages = allMessages)
+                            }
+
+                            val responseJson = Json.encodeToString(response)
+
+                            val currentSessions = connections.toList()
+                            currentSessions.forEach { session ->
+                                try {
+                                    session.send(Frame.Text(responseJson))
+                                } catch (e: Exception) {
+                                    // Si l'envoi échoue, on retire cette session morte
+                                    connections.remove(session)
+                                    println("session mort retiré")
+                                }
+                            }
+                        println("Message diffusé à tous")
+                        }
+                    }
+                }catch (e: Exception) {
+                    println("Erreur ou déconnexion : ${e.localizedMessage}")
+                } finally {
+                    connections -= this
+                    println("Connexion fermée et retirée proprement")
+                }
+            }
+        }
+
     }.start(wait = true)
 }
