@@ -192,7 +192,7 @@ fun TestMessages(username: String = "") {
     val scope = rememberCoroutineScope()
 
 LaunchedEffect(Unit) {
-    client.webSocket("wss://${GameConfig.IP}msg") {
+    client.webSocket("wss://alphaminigame.duckdns.org/msg") {
         session = this
         messagesDisplay = "Connecté au serveur !"
 
